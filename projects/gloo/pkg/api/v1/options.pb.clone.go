@@ -852,6 +852,12 @@ func (m *RouteOptions) Clone() proto.Message {
 		target.Ai = proto.Clone(m.GetAi()).(*github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_ai.RouteSettings)
 	}
 
+	if h, ok := interface{}(m.GetDirectResponse()).(clone.Cloner); ok {
+		target.DirectResponse = h.Clone().(*RouteOptions_DirectResponseAction)
+	} else {
+		target.DirectResponse = proto.Clone(m.GetDirectResponse()).(*RouteOptions_DirectResponseAction)
+	}
+
 	switch m.HostRewriteType.(type) {
 
 	case *RouteOptions_HostRewrite:
@@ -1164,6 +1170,25 @@ func (m *RouteOptions_MaxStreamDuration) Clone() proto.Message {
 		target.GrpcTimeoutHeaderOffset = h.Clone().(*github_com_golang_protobuf_ptypes_duration.Duration)
 	} else {
 		target.GrpcTimeoutHeaderOffset = proto.Clone(m.GetGrpcTimeoutHeaderOffset()).(*github_com_golang_protobuf_ptypes_duration.Duration)
+	}
+
+	return target
+}
+
+// Clone function
+func (m *RouteOptions_DirectResponseAction) Clone() proto.Message {
+	var target *RouteOptions_DirectResponseAction
+	if m == nil {
+		return target
+	}
+	target = &RouteOptions_DirectResponseAction{}
+
+	target.Status = m.GetStatus()
+
+	if h, ok := interface{}(m.GetBody()).(clone.Cloner); ok {
+		target.Body = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.StringValue)
+	} else {
+		target.Body = proto.Clone(m.GetBody()).(*github_com_golang_protobuf_ptypes_wrappers.StringValue)
 	}
 
 	return target

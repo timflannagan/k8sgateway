@@ -20,6 +20,7 @@ weight: 5
 - [VirtualHostOptions](#virtualhostoptions)
 - [RouteOptions](#routeoptions)
 - [MaxStreamDuration](#maxstreamduration)
+- [DirectResponseAction](#directresponseaction)
 - [DestinationSpec](#destinationspec)
 - [WeightedDestinationOptions](#weighteddestinationoptions)
   
@@ -335,6 +336,7 @@ to be usable by Gloo. (plugins currently need to be compiled into Gloo)
 "idleTimeout": .google.protobuf.Duration
 "extProc": .extproc.options.gloo.solo.io.RouteSettings
 "ai": .ai.options.gloo.solo.io.RouteSettings
+"directResponse": .gloo.solo.io.RouteOptions.DirectResponseAction
 
 ```
 
@@ -379,6 +381,7 @@ to be usable by Gloo. (plugins currently need to be compiled into Gloo)
 | `idleTimeout` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | Specifies the idle timeout for the route. If not specified, there is no per-route idle timeout, although the Gateway's [httpConnectionManagerSettings](https://docs.solo.io/gloo-edge/latest/reference/api/github.com/solo-io/gloo/projects/gloo/api/v1/options/hcm/hcm.proto.sk/#httpconnectionmanagersettings) wide stream_idle_timeout will still apply. A value of 0 will completely disable the route’s idle timeout, even if a connection manager stream idle timeout is configured. Please refer to the [Envoy documentation](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#envoy-v3-api-field-config-route-v3-routeaction-idle-timeout). |
 | `extProc` | [.extproc.options.gloo.solo.io.RouteSettings](../enterprise/options/extproc/extproc.proto.sk/#routesettings) | Enterprise-only: External Processing filter settings for the route. This can be used to override certain HttpListenerOptions or VirtualHostOptions settings. |
 | `ai` | [.ai.options.gloo.solo.io.RouteSettings](../enterprise/options/ai/ai.proto.sk/#routesettings) | Enterprise-only: Settings to configure ai settings for a route. These settings will only apply if the backend is an `ai` Upstream. |
+| `directResponse` | [.gloo.solo.io.RouteOptions.DirectResponseAction](../options.proto.sk/#directresponseaction) | Return an arbitrary HTTP response directly, without proxying. |
 
 
 
@@ -401,6 +404,25 @@ This is a 1:1 translation to the [Envoy API described here](https://www.envoypro
 | `maxStreamDuration` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | Specifies the maximum duration allowed for streams on the route. If not specified, the value from the [max_stream_duration](https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/protocol.proto#envoy-v3-api-field-config-core-v3-httpprotocoloptions-max-stream-duration) field in [HttpConnectionManager.common_http_protocol_options](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/filters/network/http_connection_manager/v3/http_connection_manager.proto#envoy-v3-api-field-extensions-filters-network-http-connection-manager-v3-httpconnectionmanager-common-http-protocol-options) is used. If this field is set explicitly to zero, any HttpConnectionManager max_stream_duration timeout will be disabled for this route. |
 | `grpcTimeoutHeaderMax` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | If present, and the request contains a [grpc-timeout header](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md), use that value as the `max_stream_duration`, but limit the applied timeout to the maximum value specified here. If set to 0, the `grpc-timeout` header is used without modification. |
 | `grpcTimeoutHeaderOffset` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | If present, Envoy will adjust the timeout provided by the `grpc-timeout` header by subtracting the provided duration from the header. This is useful for allowing Envoy to set its global timeout to be less than that of the deadline imposed by the calling client, which makes it more likely that Envoy will handle the timeout instead of having the call canceled by the client. If, after applying the offset, the resulting timeout is zero or negative, the stream will timeout immediately. |
+
+
+
+
+---
+### DirectResponseAction
+
+
+
+```yaml
+"status": int
+"body": .google.protobuf.StringValue
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `status` | `int` | Specifies the HTTP response status to be returned. |
+| `body` | [.google.protobuf.StringValue](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/string-value) | Specifies the content of the response body. If this setting is omitted, no body is included in the generated response. |
 
 
 

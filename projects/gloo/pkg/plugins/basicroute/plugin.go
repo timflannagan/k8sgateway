@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	envoy_retry_priorities_v3 "github.com/envoyproxy/go-control-plane/envoy/extensions/retry/priority/previous_priorities/v3"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -28,19 +29,16 @@ const (
 	PreviousPrioritiesExtensionName = "envoy.retry_priorities.previous_priorities"
 )
 
-// Handles a RoutePlugin APIs which map directly to basic Envoy config
+// plugin handles RoutePlugin APIs which map directly to basic Envoy config.
 type plugin struct{}
 
 func NewPlugin() *plugin {
 	return &plugin{}
 }
 
-func (p *plugin) Name() string {
-	return ExtensionName
-}
+func (p *plugin) Name() string { return ExtensionName }
 
-func (p *plugin) Init(_ plugins.InitParams) {
-}
+func (p *plugin) Init(_ plugins.InitParams) {}
 
 func (p *plugin) ProcessVirtualHost(
 	params plugins.VirtualHostParams,
@@ -87,7 +85,28 @@ func (p *plugin) ProcessRoute(params plugins.RouteParams, in *v1.Route, out *env
 	if err := applyUpgrades(in, out); err != nil {
 		return err
 	}
+	if err := applyDirectResponse(in, out); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func applyDirectResponse(in *v1.Route, out *envoy_config_route_v3.Route) error {
+	if in.GetOptions().GetDirectResponse() == nil {
+		return nil
+	}
+	// TODO: what happens if out.Action is not nil?
+	out.Action = &envoy_config_route_v3.Route_DirectResponse{
+		DirectResponse: &envoy_config_route_v3.DirectResponseAction{
+			Status: in.GetOptions().GetDirectResponse().GetStatus(),
+			Body: &corev3.DataSource{
+				Specifier: &corev3.DataSource_InlineString{
+					InlineString: in.GetOptions().GetDirectResponse().GetBody().String(),
+				},
+			},
+		},
+	}
 	return nil
 }
 

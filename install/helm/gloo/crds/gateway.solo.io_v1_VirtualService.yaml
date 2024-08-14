@@ -3383,6 +3383,16 @@ spec:
                                       type: string
                                   type: object
                               type: object
+                            directResponse:
+                              properties:
+                                body:
+                                  nullable: true
+                                  type: string
+                                status:
+                                  maximum: 4294967295
+                                  minimum: 0
+                                  type: integer
+                              type: object
                             dlp:
                               properties:
                                 actions:

@@ -1236,6 +1236,16 @@ func (m *RouteOptions) Equal(that interface{}) bool {
 		}
 	}
 
+	if h, ok := interface{}(m.GetDirectResponse()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetDirectResponse()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetDirectResponse(), target.GetDirectResponse()) {
+			return false
+		}
+	}
+
 	switch m.HostRewriteType.(type) {
 
 	case *RouteOptions_HostRewrite:
@@ -1716,6 +1726,44 @@ func (m *RouteOptions_MaxStreamDuration) Equal(that interface{}) bool {
 		}
 	} else {
 		if !proto.Equal(m.GetGrpcTimeoutHeaderOffset(), target.GetGrpcTimeoutHeaderOffset()) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Equal function
+func (m *RouteOptions_DirectResponseAction) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	target, ok := that.(*RouteOptions_DirectResponseAction)
+	if !ok {
+		that2, ok := that.(RouteOptions_DirectResponseAction)
+		if ok {
+			target = &that2
+		} else {
+			return false
+		}
+	}
+	if target == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+
+	if m.GetStatus() != target.GetStatus() {
+		return false
+	}
+
+	if h, ok := interface{}(m.GetBody()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetBody()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetBody(), target.GetBody()) {
 			return false
 		}
 	}

@@ -597,6 +597,17 @@ message RouteOptions {
     // Enterprise-only: Settings to configure ai settings for a route.
     // These settings will only apply if the backend is an `ai` Upstream.
     ai.options.gloo.solo.io.RouteSettings ai = 31;
+
+    message DirectResponseAction {
+        // Specifies the HTTP response status to be returned.
+        uint32 status = 1;
+        // Specifies the content of the response body. If this setting is omitted,
+        // no body is included in the generated response.
+        google.protobuf.StringValue body = 2;
+    }
+
+    // Return an arbitrary HTTP response directly, without proxying.
+    DirectResponseAction direct_response = 32;
 }
 
 // Configuration for Destinations that are tied to the UpstreamSpec or ServiceSpec on that destination
