@@ -167,7 +167,6 @@ install-go-tools: mod-download ## Download and install Go dependencies
 	go install github.com/cratonica/2goarray
 	go install github.com/golang/mock/mockgen
 	go install github.com/saiskee/gettercheck
-	go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
 	# This version must stay in sync with the version used in CI: .github/workflows/static-analysis.yaml
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(LINTER_VERSION)
 	go install github.com/quasilyte/go-ruleguard/cmd/ruleguard@v0.3.16
@@ -1187,17 +1186,26 @@ build-test-chart: ## Build the Helm chart and place it in the _test directory
 # Targets for running Kubernetes Gateway API conformance tests
 #----------------------------------------------------------------------------------
 
+# FIXME(tim): Re-evaluate the --version & --contact flags. I think both are fine, but need to validate.
+# TODO(tim): We should have a single Makefile target to drive all of this...
+# Note(tim): Looks like adding the "TLS" profile breaks everything. We obviously don't support the "MESH" profile either.
+# Note(tim): All of the profiles and suites were refactored in the release-1.1 branch. The profiles became more granular
+# 			 among other things like the experimental_conformance_test.go file being removed.
+
 # Pull the conformance test suite from the k8s gateway api repo and copy it into the test dir.
 $(TEST_ASSET_DIR)/conformance/conformance_test.go:
 	mkdir -p $(TEST_ASSET_DIR)/conformance
-	echo "//go:build conformance" > $@
 	cat $(shell go list -json -m sigs.k8s.io/gateway-api | jq -r '.Dir')/conformance/conformance_test.go >> $@
 	go fmt $@
 
-CONFORMANCE_ARGS:=-gateway-class=gloo-gateway -supported-features=Gateway,ReferenceGrant,HTTPRoute,HTTPRouteQueryParamMatching,HTTPRouteMethodMatching,HTTPRouteResponseHeaderModification,HTTPRoutePortRedirect,HTTPRouteHostRewrite,HTTPRouteSchemeRedirect,HTTPRoutePathRedirect,HTTPRouteHostRewrite,HTTPRoutePathRewrite,HTTPRouteRequestMirror
+$(TEST_ASSET_DIR)/conformance/experimental_conformance_test.go:
+	mkdir -p $(TEST_ASSET_DIR)/conformance
+	cat $(shell go list -json -m sigs.k8s.io/gateway-api | jq -r '.Dir')/conformance/experimental_conformance_test.go >> $@
+	go fmt $@
 
-# Run the conformance test suite
-.PHONY: conformance
+CONFORMANCE_ARGS := -gateway-class=gloo-gateway -supported-features=Gateway,ReferenceGrant,HTTPRoute,HTTPRouteQueryParamMatching,HTTPRouteMethodMatching,HTTPRouteResponseHeaderModification,HTTPRoutePortRedirect,HTTPRouteHostRewrite,HTTPRouteSchemeRedirect,HTTPRoutePathRedirect,HTTPRouteHostRewrite,HTTPRoutePathRewrite,HTTPRouteRequestMirror
+
+.PHONY: conformance ## Run the conformance test suite
 conformance: $(TEST_ASSET_DIR)/conformance/conformance_test.go
 	go test -ldflags=$(LDFLAGS) -tags conformance -test.v $(TEST_ASSET_DIR)/conformance/... -args $(CONFORMANCE_ARGS)
 
@@ -1206,6 +1214,14 @@ conformance: $(TEST_ASSET_DIR)/conformance/conformance_test.go
 conformance-%: $(TEST_ASSET_DIR)/conformance/conformance_test.go
 	go test -ldflags=$(LDFLAGS) -tags conformance -test.v $(TEST_ASSET_DIR)/conformance/... -args $(CONFORMANCE_ARGS) \
 	-run-test=$*
+
+.PHONY: conformance-experimental ## Run the extended conformance test suite
+conformance-experimental: CONFORMANCE_ARGS += -conformance-profiles=HTTP -report-output=$(TEST_ASSET_DIR)/conformance/report.yaml -organization=solo.io -project=gloo -version=$(VERSION) -url=github.com/solo-io/gloo -contact=github.com/solo-io/gloo/issues/new/choose
+conformance-experimental: $(TEST_ASSET_DIR)/conformance/conformance_test.go $(TEST_ASSET_DIR)/conformance/experimental_conformance_test.go
+	go test -ldflags=$(LDFLAGS) \
+		-run TestExperimentalConformance \
+		-test.v $(TEST_ASSET_DIR)/conformance/... \
+		-args $(CONFORMANCE_ARGS) \
 
 #----------------------------------------------------------------------------------
 # Security Scan
