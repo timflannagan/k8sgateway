@@ -48,6 +48,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          repository: timflannagan/gloo
 
       - name: Run Conformance Tests
         uses: ./.github/workflows/composite-actions/conformance-tests
