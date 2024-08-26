@@ -1,0 +1,8 @@
+changelog:
+  - type: NON_USER_FACING
+    issueLink: https://github.com/solo-io/gloo/issues/9774
+    resolvesIssue: false
+    description: >-
+      Introduce a new DirectResponseRoute v1alpha1 API to allow users to
+      configure direct response routes with the Kubernetes Gateway API
+      integration.

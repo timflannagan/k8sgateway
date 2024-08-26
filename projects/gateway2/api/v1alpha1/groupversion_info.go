@@ -27,4 +27,6 @@ var (
 		Version: Version,
 		Kind:    GatewayParametersKind,
 	}
+
+	// TODO: DirectResponserouteGVK.
 )
