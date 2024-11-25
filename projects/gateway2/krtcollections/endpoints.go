@@ -303,7 +303,16 @@ func transformK8sEndpoints(ctx context.Context, inputs EndpointsInputs) func(kct
 							augmentedLabels = maybePod.AugmentedLabels
 						}
 					}
-					ep := CreateLBEndpoint(addr, port, augmentedLabels, enableAutoMtls)
+
+					metadata := &envoy_config_core_v3.Metadata{
+						FilterMetadata: map[string]*structpb.Struct{},
+					}
+					metadata = addIstioAutomtlsMetadata(metadata, augmentedLabels, enableAutoMtls)
+					if len(metadata.GetFilterMetadata()) == 0 {
+						metadata = nil
+					}
+
+					ep := CreateLBEndpoint(addr, port, augmentedLabels, metadata)
 
 					ret.Add(l, EndpointWithMd{
 						LbEndpoint: ep,
@@ -319,21 +328,7 @@ func transformK8sEndpoints(ctx context.Context, inputs EndpointsInputs) func(kct
 	}
 }
 
-func CreateLBEndpoint(address string, port uint32, podLabels map[string]string, enableAutoMtls bool) *envoy_config_endpoint_v3.LbEndpoint {
-	// Don't get the metadata labels and filter metadata for the envoy load balancer based on the upstream, as this is not used
-	// metadata := getLbMetadata(upstream, labels, "")
-	// Get the metadata labels for the transport socket match if Istio auto mtls is enabled
-	metadata := &envoy_config_core_v3.Metadata{
-		FilterMetadata: map[string]*structpb.Struct{},
-	}
-	metadata = addIstioAutomtlsMetadata(metadata, podLabels, enableAutoMtls)
-	// Don't add the annotations to the metadata - it's not documented so it's not coming
-	// metadata = addAnnotations(metadata, addr.GetMetadata().GetAnnotations())
-
-	if len(metadata.GetFilterMetadata()) == 0 {
-		metadata = nil
-	}
-
+func CreateLBEndpoint(address string, port uint32, podLabels map[string]string, metadata *envoy_config_core_v3.Metadata) *envoy_config_endpoint_v3.LbEndpoint {
 	return &envoy_config_endpoint_v3.LbEndpoint{
 		Metadata:            metadata,
 		LoadBalancingWeight: wrapperspb.UInt32(1),

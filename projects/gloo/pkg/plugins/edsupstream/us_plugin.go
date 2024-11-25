@@ -28,9 +28,7 @@ func (p *seUsPlugin) Init(params plugins.InitParams) {
 	p.settings = params.Settings
 }
 
-func (p *seUsPlugin) Name() string {
-	return "InternalEDSPlugin"
-}
+func (p *seUsPlugin) Name() string { return "InternalEDSPlugin" }
 
 func (p *seUsPlugin) ProcessUpstream(params plugins.Params, in *v1.Upstream, out *cluster_v3.Cluster) error {
 	// not ours
