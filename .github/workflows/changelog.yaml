@@ -1,0 +1,150 @@
+name: Generate CHANGELOG
+
+on:
+  workflow_dispatch:
+
+# git add . ; gcan ; git push -f origin playground ; sleep 1 ; gh workflow run changelog.yaml --ref playground --repo github.com/timflannagan/k8sgateway
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  generate-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch full history for tags and PR history
+
+      - name: Set up GitHub CLI and authenticate
+        run: |
+          sudo apt-get update && sudo apt-get install -y gh jq
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Get last tag and date
+        id: last-tag
+        shell: bash
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0)
+          LAST_TAG_DATE=$(git log -1 --format=%aI "$LAST_TAG")
+          echo "Last tag: $LAST_TAG"
+          echo "Last tag date: $LAST_TAG_DATE"
+          echo "lastTag=$LAST_TAG" >> $GITHUB_OUTPUT
+          echo "lastTagDate=$LAST_TAG_DATE" >> $GITHUB_OUTPUT
+
+      - name: Fetch PRs with release-note label merged after last tag
+        id: fetch-prs
+        shell: bash
+        run: |
+          set -x
+          set -o pipefail
+          set -o nounset
+          set -o errexit
+
+          # --search "merged:>$LAST_TAG_DATE" \
+          # --state merged \
+          LAST_TAG_DATE=${{ steps.last-tag.outputs.lastTagDate }}
+          PR_JSON=$(gh pr list \
+            --repo timflannagan/k8sgateway \
+            --label release-note \
+            --state open \
+            --json number,title,labels,url,mergedAt,body \
+            --limit 100)
+
+          if [[ -z "$PR_JSON" ]]; then
+            echo "No PRs found with release-note label merged after $LAST_TAG_DATE."
+            exit 0
+          else
+            echo "Found PRs with release-note label merged after $LAST_TAG_DATE."
+            echo "PR_JSON=$PR_JSON"
+            echo "::set-output name=result::$PR_JSON"
+          fi
+
+      - name: Build CHANGELOG.md
+        id: build-changelog
+        shell: bash
+        run: |
+          set -x
+          set -o pipefail
+          set -o nounset
+          set -o errexit
+
+          RAW_PR_DATA='${{ steps.fetch-prs.outputs.result }}'
+          PR_DATA=$(echo "$RAW_PR_DATA" | jq -r .)
+
+          # If no PRs found, exit early
+          if [[ "$PR_DATA" == "[]" ]]; then
+            echo "No PRs found for changelog."
+            exit 0
+          fi
+
+          # Initialize variables for each section
+          new_features=""
+          bug_fixes=""
+          deprecations=""
+          breaking_changes=""
+
+          PR_COUNT=$(echo "$PR_DATA" | jq 'length')
+
+          for (( i=0; i<$PR_COUNT; i++ )); do
+            title=$(echo "$PR_DATA" | jq -r ".[$i].title")
+            url=$(echo "$PR_DATA" | jq -r ".[$i].url")
+            labels=$(echo "$PR_DATA" | jq -r ".[$i].labels[].name")
+            body=$(echo "$PR_DATA" | jq -r ".[$i].body")
+
+            note=$(echo "$body" | awk '/```release-note/{flag=1;next}/```/{flag=0}flag' | tr -d '\r\n' | xargs)
+
+            if [[ -n "$note" ]]; then
+              entry="- $note ([$title]($url))"$'\n'
+            else
+              entry="- [$title]($url)"$'\n'
+            fi
+
+            for label in $labels; do
+              case "$label" in
+                "kind/new_feature"|"kind/enhancement")
+                  new_features+="$entry"
+                  ;;
+                "kind/bug")
+                  bug_fixes+="$entry"
+                  ;;
+                "kind/deprecation")
+                  deprecations+="$entry"
+                  ;;
+                "kind/breaking-change")
+                  breaking_changes+="$entry"
+                  ;;
+              esac
+            done
+          done
+
+          changelog_content=""
+          if [ -n "$new_features" ]; then
+            changelog_content+="## New Features"$'\n\n'"$new_features"$'\n'
+          fi
+          if [ -n "$bug_fixes" ]; then
+            changelog_content+="## Bug Fixes"$'\n\n'"$bug_fixes"$'\n'
+          fi
+          if [ -n "$deprecations" ]; then
+            changelog_content+="## Deprecations"$'\n\n'"$deprecations"$'\n'
+          fi
+          if [ -n "$breaking_changes" ]; then
+            changelog_content+="## Breaking Changes"$'\n\n'"$breaking_changes"$'\n'
+          fi
+
+          if [ -n "$changelog_content" ]; then
+            echo "$changelog_content" > CHANGELOG.md
+            echo "Generated CHANGELOG.md:"
+            cat CHANGELOG.md
+            echo "::set-output name=changelog::true"
+          else
+            echo "No content for CHANGELOG.md."
+          fi
+
+      - name: Upload CHANGELOG artifact
+        # if: ${{ steps.build-changelog.outputs.changelog == 'true' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: CHANGELOG
+          path: CHANGELOG.md
