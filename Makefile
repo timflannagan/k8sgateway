@@ -38,7 +38,8 @@ export GOBIN:=$(DEPSGOBIN)
 # To use quay images, set the IMAGE_REGISTRY to "quay.io/solo-io" (or leave unset)
 # To use dockerhub images, set the IMAGE_REGISTRY to "soloio"
 # To use gcr images, set the IMAGE_REGISTRY to "gcr.io/$PROJECT_NAME"
-IMAGE_REGISTRY ?= quay.io/solo-io
+export IMAGE_REGISTRY ?= quay.io/tflannag
+export IMAGE_REPO ?= gloo
 
 # Kind of a hack to make sure _output exists
 z := $(shell mkdir -p $(OUTPUT_DIR))
@@ -54,9 +55,9 @@ SOURCES := $(shell find . -name "*.go" | grep -v test.go)
 # for more information, see https://github.com/solo-io/gloo/pull/9633
 # and
 # https://soloio.slab.com/posts/extended-http-methods-design-doc-40j7pjeu
-ENVOY_GLOO_IMAGE ?= quay.io/solo-io/envoy-gloo:1.31.2-patch3
-LDFLAGS := "-X github.com/solo-io/gloo/pkg/version.Version=$(VERSION)"
-GCFLAGS ?=
+export ENVOY_GLOO_IMAGE ?= quay.io/solo-io/envoy-gloo:1.31.2-patch3
+export LDFLAGS := -X github.com/solo-io/gloo/pkg/version.Version=$(VERSION)
+export GCFLAGS ?=
 
 UNAME_M := $(shell uname -m)
 # if `GO_ARCH` is set, then it will keep its value. Else, it will be changed based off the machine's host architecture.
@@ -85,9 +86,10 @@ ifeq ($(MULTIARCH), true)
 	endif
 endif
 
-GOOS ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
+export GOARCH
+export GOOS ?= $(shell uname -s | tr '[:upper:]' '[:lower:]')
 
-GO_BUILD_FLAGS := GO111MODULE=on CGO_ENABLED=0 GOARCH=$(GOARCH)
+export GO_BUILD_FLAGS := GO111MODULE=on CGO_ENABLED=0 GOARCH=$(GOARCH)
 GOLANG_ALPINE_IMAGE_NAME = golang:$(shell go version | egrep -o '([0-9]+\.[0-9]+)')-alpine3.18
 
 TEST_ASSET_DIR ?= $(ROOTDIR)/_test
@@ -203,6 +205,12 @@ check-format:
 check-spelling:
 	./ci/spell.sh check
 
+
+# Needs Home / Temp Home:
+
+GORELEASER_ARGS ?= --snapshot --clean
+release:
+	goreleaser release $(GORELEASER_ARGS)
 
 #----------------------------------------------------------------------------
 # Analyze
@@ -908,6 +916,8 @@ PUBLISH_CONTEXT := RELEASE
 VERSION := $(shell echo $(TAGGED_VERSION) | cut -c 2-)
 LDFLAGS := "-X github.com/solo-io/gloo/pkg/version.Version=$(VERSION)"
 endif
+
+export VERSION
 
 # controller variable for the "Publish Artifacts" section.  Defines which targets exist.  Possible Values: NONE, RELEASE, PULL_REQUEST
 PUBLISH_CONTEXT ?= NONE

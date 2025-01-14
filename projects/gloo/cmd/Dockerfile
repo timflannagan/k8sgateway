@@ -12,9 +12,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install --no-install-recommends -y  ca-certificates \
-    && apt-get install wget -y \ 
+    && apt-get install wget file -y \
     && rm -rf  /var/log/*log /var/lib/apt/lists/* /var/log/apt/* /var/lib/dpkg/*-old /var/cache/debconf/*-old
-
 
 COPY gloo-linux-$GOARCH /usr/local/bin/gloo
 
