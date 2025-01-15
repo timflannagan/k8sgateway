@@ -47,14 +47,13 @@ jobs:
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
             echo "GORELEASER_ARGS=--clean" >> $GITHUB_ENV
-          elif [[ $GITHUB_REF == refs/heads/main ]]; then
-            VERSION="$(echo "${GITHUB_REF#refs/heads/}" | sed -r 's|/+|-|g')"
-            echo "GORELEASER_ARGS=--clean --skip=validate" >> $GITHUB_ENV
           elif [[ $GITHUB_REF == refs/pull/* ]]; then
             VERSION="pr-$(echo "${GITHUB_REF}" | sed -E 's|refs/pull/([^/]+)/?.*|\1|')"
           else
             VERSION="$(git describe --tags --always)"
           fi
+          echo "VERSION=${VERSION}"
+          echo "GORELEASER_ARGS=${GORELEASER_ARGS}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Run goreleaser
